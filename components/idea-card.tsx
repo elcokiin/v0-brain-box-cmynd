@@ -54,13 +54,13 @@ interface IdeaCardProps {
   onOpenMenu?: () => void
 }
 
-export function IdeaCard({ 
-  idea, 
-  onStatusChange, 
+export function IdeaCard({
+  idea,
+  onStatusChange,
   onPinChange,
   onColorChange,
-  isSelected = false, 
-  onOpenMenu 
+  isSelected = false,
+  onOpenMenu
 }: IdeaCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -118,8 +118,8 @@ export function IdeaCard({
   }
 
   const selectedColor = CARD_COLORS.find(c => c.id === idea.background_color)
-  const cardStyle = selectedColor?.color 
-    ? { backgroundColor: selectedColor.color } 
+  const cardStyle = selectedColor?.color
+    ? { backgroundColor: selectedColor.color }
     : undefined
 
   return (
@@ -146,7 +146,7 @@ export function IdeaCard({
         <span className="sr-only">{idea.pinned ? "Unpin" : "Pin"}</span>
       </Button>
 
-      <CardContent className="pt-4 pr-10">
+      <CardContent className="pt-2 pr-10">
         <div className="space-y-3">
           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
             {idea.content}
@@ -204,8 +204,8 @@ export function IdeaCard({
                             onClick={() => handleColorSelect(colorOption.id)}
                             className={cn(
                               "size-6 rounded-full border-2 transition-all hover:scale-110 flex items-center justify-center",
-                              colorOption.id === null 
-                                ? "bg-card border-border" 
+                              colorOption.id === null
+                                ? "bg-card border-border"
                                 : "border-transparent",
                               idea.background_color === colorOption.id && "ring-2 ring-primary ring-offset-1"
                             )}
