@@ -40,29 +40,54 @@ export async function PATCH(
     const body = await request.json()
     const { content, status, tags, pinned, background_color } = body
     
-    // Handle deleted_at based on status change
-    let deletedAtClause = sql`deleted_at`
-    if (status === 'deleted') {
-      // Set deleted_at only if not already set
-      deletedAtClause = sql`COALESCE(deleted_at, NOW())`
-    } else if (status === 'inbox' || status === 'archived') {
-      // Clear deleted_at when restoring
-      deletedAtClause = sql`NULL`
-    }
+    let result
     
-    const result = await sql`
-      UPDATE ideas 
-      SET 
-        content = COALESCE(${content !== undefined ? content.trim() : null}, content),
-        status = COALESCE(${status ?? null}, status),
-        tags = COALESCE(${tags ?? null}, tags),
-        pinned = COALESCE(${pinned ?? null}, pinned),
-        background_color = ${background_color !== undefined ? background_color : sql`background_color`},
-        deleted_at = ${deletedAtClause},
-        updated_at = NOW()
-      WHERE id = ${id}
-      RETURNING *
-    `
+    // Handle different status changes with separate queries
+    if (status === 'deleted') {
+      // Moving to trash - set deleted_at if not already set
+      result = await sql`
+        UPDATE ideas 
+        SET 
+          content = COALESCE(${content !== undefined ? content.trim() : null}, content),
+          status = 'deleted',
+          tags = COALESCE(${tags ?? null}, tags),
+          pinned = COALESCE(${pinned ?? null}, pinned),
+          background_color = COALESCE(${background_color ?? null}, background_color),
+          deleted_at = COALESCE(deleted_at, NOW()),
+          updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `
+    } else if (status === 'inbox' || status === 'archived') {
+      // Restoring from trash - clear deleted_at
+      result = await sql`
+        UPDATE ideas 
+        SET 
+          content = COALESCE(${content !== undefined ? content.trim() : null}, content),
+          status = ${status},
+          tags = COALESCE(${tags ?? null}, tags),
+          pinned = COALESCE(${pinned ?? null}, pinned),
+          background_color = COALESCE(${background_color ?? null}, background_color),
+          deleted_at = NULL,
+          updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `
+    } else {
+      // No status change - just update other fields
+      result = await sql`
+        UPDATE ideas 
+        SET 
+          content = COALESCE(${content !== undefined ? content.trim() : null}, content),
+          status = COALESCE(${status ?? null}, status),
+          tags = COALESCE(${tags ?? null}, tags),
+          pinned = COALESCE(${pinned ?? null}, pinned),
+          background_color = COALESCE(${background_color ?? null}, background_color),
+          updated_at = NOW()
+        WHERE id = ${id}
+        RETURNING *
+      `
+    }
     
     if (result.length === 0) {
       return NextResponse.json(
