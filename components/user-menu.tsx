@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { signOut } from "next-auth/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -11,7 +12,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogOut, User } from "lucide-react"
+import { LogOut, User, Key } from "lucide-react"
+import { ApiKeysDialog } from "@/components/api-keys-dialog"
 
 interface UserMenuProps {
   user: {
@@ -22,6 +24,8 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ user }: UserMenuProps) {
+  const [apiKeysOpen, setApiKeysOpen] = useState(false)
+  
   const initials = user.name
     ?.split(" ")
     .map((n) => n[0])
@@ -30,6 +34,8 @@ export function UserMenu({ user }: UserMenuProps) {
     .slice(0, 2) || "U"
 
   return (
+    <>
+    <ApiKeysDialog open={apiKeysOpen} onOpenChange={setApiKeysOpen} />
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative size-9 rounded-full">
@@ -55,6 +61,13 @@ export function UserMenu({ user }: UserMenuProps) {
           <User className="size-4" />
           Profile
         </DropdownMenuItem>
+        <DropdownMenuItem 
+          className="gap-2"
+          onClick={() => setApiKeysOpen(true)}
+        >
+          <Key className="size-4" />
+          API Keys
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="gap-2 text-destructive focus:text-destructive"
@@ -65,5 +78,6 @@ export function UserMenu({ user }: UserMenuProps) {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    </>
   )
 }
