@@ -4,6 +4,13 @@ import GoogleProvider from "next-auth/providers/google"
 
 const sql = neon(process.env.DATABASE_URL!)
 
+// Debug: Log auth configuration on startup
+if (typeof window === "undefined") {
+  console.log("[v0] Auth config - NEXTAUTH_URL:", process.env.NEXTAUTH_URL)
+  console.log("[v0] Auth config - GOOGLE_CLIENT_ID set:", !!process.env.GOOGLE_CLIENT_ID)
+  console.log("[v0] Auth config - NEXTAUTH_SECRET set:", !!process.env.NEXTAUTH_SECRET)
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
