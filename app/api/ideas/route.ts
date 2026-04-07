@@ -2,6 +2,12 @@ import { sql } from "@/lib/db"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { NextRequest, NextResponse } from "next/server"
+import crypto from "crypto"
+
+// Hash API key for comparison
+function hashApiKey(key: string): string {
+  return crypto.createHash("sha256").update(key).digest("hex")
+}
 
 // Validate API key for external integrations (n8n, Telegram, etc.)
 // Returns user_id if valid, null otherwise
@@ -10,12 +16,31 @@ async function validateApiKey(request: NextRequest): Promise<string | null> {
   if (!authHeader?.startsWith("Bearer ")) return null
   
   const apiKey = authHeader.slice(7)
-  if (apiKey !== process.env.BRAINBOX_API_KEY) return null
   
-  // Get the first user (for single-user API key setup)
-  // In production, you might want to associate API keys with specific users
-  const users = await sql`SELECT id FROM users LIMIT 1`
-  return users.length > 0 ? users[0].id : null
+  // First check legacy global API key (for backward compatibility)
+  if (process.env.BRAINBOX_API_KEY && apiKey === process.env.BRAINBOX_API_KEY) {
+    const users = await sql`SELECT id FROM users LIMIT 1`
+    return users.length > 0 ? users[0].id : null
+  }
+  
+  // Check user-created API keys
+  const hashedKey = hashApiKey(apiKey)
+  const result = await sql`
+    SELECT user_id FROM api_keys 
+    WHERE key_hash = ${hashedKey}
+  `
+  
+  if (result.length > 0) {
+    // Update last_used_at timestamp
+    await sql`
+      UPDATE api_keys 
+      SET last_used_at = NOW() 
+      WHERE key_hash = ${hashedKey}
+    `
+    return result[0].user_id
+  }
+  
+  return null
 }
 
 // Get authenticated user ID from session or API key
