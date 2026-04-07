@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
 
 const _inter = Inter({ subsets: ["latin"] });
@@ -29,25 +30,6 @@ export const metadata: Metadata = {
   },
 }
 
-const themeScript = `
-  (function() {
-    try {
-      const stored = localStorage.getItem('brainbox-theme');
-      const root = document.documentElement;
-      root.classList.remove('light', 'dark');
-      
-      if (stored === 'dark') {
-        root.classList.add('dark');
-      } else if (stored === 'light') {
-        root.classList.add('light');
-      } else {
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        root.classList.add(systemDark ? 'dark' : 'light');
-      }
-    } catch (e) {}
-  })();
-`;
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -55,11 +37,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
       <body className="font-sans antialiased">
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
