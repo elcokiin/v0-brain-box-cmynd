@@ -29,13 +29,35 @@ export const metadata: Metadata = {
   },
 }
 
+const themeScript = `
+  (function() {
+    try {
+      const stored = localStorage.getItem('brainbox-theme');
+      const root = document.documentElement;
+      root.classList.remove('light', 'dark');
+      
+      if (stored === 'dark') {
+        root.classList.add('dark');
+      } else if (stored === 'light') {
+        root.classList.add('light');
+      } else {
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        root.classList.add(systemDark ? 'dark' : 'light');
+      }
+    } catch (e) {}
+  })();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="font-sans antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
