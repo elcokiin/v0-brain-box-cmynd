@@ -1,5 +1,6 @@
 import { sql } from "@/lib/db"
-import { auth } from "@/lib/auth"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import { NextRequest, NextResponse } from "next/server"
 
 // Validate API key for external integrations
@@ -16,7 +17,7 @@ async function validateApiKey(request: NextRequest): Promise<string | null> {
 
 // Get authenticated user ID from session or API key
 async function getAuthenticatedUserId(request: NextRequest): Promise<string | null> {
-  const session = await auth()
+  const session = await getServerSession(authOptions)
   if (session?.user?.id) {
     return session.user.id
   }

@@ -1,5 +1,6 @@
 import { sql } from "@/lib/db"
-import { auth } from "@/lib/auth"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import { NextRequest, NextResponse } from "next/server"
 
 // Validate API key for external integrations (n8n, Telegram, etc.)
@@ -20,7 +21,7 @@ async function validateApiKey(request: NextRequest): Promise<string | null> {
 // Get authenticated user ID from session or API key
 async function getAuthenticatedUserId(request: NextRequest): Promise<string | null> {
   // First check session auth
-  const session = await auth()
+  const session = await getServerSession(authOptions)
   if (session?.user?.id) {
     return session.user.id
   }
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Determine source based on auth method
-    const session = await auth()
+    const session = await getServerSession(authOptions)
     const source = session?.user?.id ? "web" : "telegram"
     
     const body = await request.json()
