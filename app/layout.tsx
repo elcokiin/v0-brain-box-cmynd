@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
+  title: 'BrainBox - Capture Ideas Anywhere',
+  description: 'A personal idea management system for frictionless capture and thoughtful review.',
   generator: 'v0.app',
   icons: {
     icon: [
