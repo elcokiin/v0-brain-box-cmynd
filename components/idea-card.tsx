@@ -10,8 +10,12 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Archive, Inbox, Trash2, MessageSquare, Globe } from "lucide-react"
+import { MoreHorizontal, Archive, Inbox, Trash2, MessageSquare, Globe, Pin, PinOff, Palette, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface Idea {
@@ -20,18 +24,44 @@ export interface Idea {
   source: "web" | "telegram"
   status: "inbox" | "archived" | "deleted"
   tags: string[] | null
+  pinned: boolean
+  background_color: string | null
   created_at: string
   updated_at: string
 }
 
+const CARD_COLORS = [
+  { id: null, name: "Default", color: null },
+  { id: "coral", name: "Coral", color: "oklch(0.75 0.12 25)" },
+  { id: "peach", name: "Peach", color: "oklch(0.80 0.10 55)" },
+  { id: "sand", name: "Sand", color: "oklch(0.85 0.06 85)" },
+  { id: "mint", name: "Mint", color: "oklch(0.85 0.08 155)" },
+  { id: "sage", name: "Sage", color: "oklch(0.78 0.06 145)" },
+  { id: "fog", name: "Fog", color: "oklch(0.82 0.04 250)" },
+  { id: "storm", name: "Storm", color: "oklch(0.70 0.06 260)" },
+  { id: "dusk", name: "Dusk", color: "oklch(0.75 0.10 300)" },
+  { id: "lavender", name: "Lavender", color: "oklch(0.80 0.08 290)" },
+  { id: "blossom", name: "Blossom", color: "oklch(0.82 0.10 350)" },
+  { id: "rose", name: "Rose", color: "oklch(0.78 0.12 10)" },
+]
+
 interface IdeaCardProps {
   idea: Idea
   onStatusChange: (id: string, status: "inbox" | "archived" | "deleted") => void
+  onPinChange: (id: string, pinned: boolean) => void
+  onColorChange: (id: string, color: string | null) => void
   isSelected?: boolean
   onOpenMenu?: () => void
 }
 
-export function IdeaCard({ idea, onStatusChange, isSelected = false, onOpenMenu }: IdeaCardProps) {
+export function IdeaCard({ 
+  idea, 
+  onStatusChange, 
+  onPinChange,
+  onColorChange,
+  isSelected = false, 
+  onOpenMenu 
+}: IdeaCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -41,6 +71,19 @@ export function IdeaCard({ idea, onStatusChange, isSelected = false, onOpenMenu 
     await onStatusChange(idea.id, newStatus)
     setIsUpdating(false)
     setMenuOpen(false)
+  }
+
+  const handlePinToggle = async () => {
+    setIsUpdating(true)
+    await onPinChange(idea.id, !idea.pinned)
+    setIsUpdating(false)
+    setMenuOpen(false)
+  }
+
+  const handleColorSelect = async (colorId: string | null) => {
+    setIsUpdating(true)
+    await onColorChange(idea.id, colorId)
+    setIsUpdating(false)
   }
 
   useEffect(() => {
@@ -74,16 +117,36 @@ export function IdeaCard({ idea, onStatusChange, isSelected = false, onOpenMenu 
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
   }
 
+  const selectedColor = CARD_COLORS.find(c => c.id === idea.background_color)
+  const cardStyle = selectedColor?.color 
+    ? { backgroundColor: selectedColor.color } 
+    : undefined
+
   return (
     <Card
       ref={cardRef}
+      style={cardStyle}
       className={cn(
-        "group transition-all duration-200 hover:shadow-md break-inside-avoid",
+        "group transition-all duration-200 hover:shadow-md break-inside-avoid relative",
         isUpdating && "opacity-50 pointer-events-none",
-        isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+        isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+        idea.background_color && "border-transparent"
       )}
     >
-      <CardContent className="pt-4">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={handlePinToggle}
+        className={cn(
+          "absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity",
+          idea.pinned && "opacity-100 text-primary"
+        )}
+      >
+        {idea.pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+        <span className="sr-only">{idea.pinned ? "Unpin" : "Pin"}</span>
+      </Button>
+
+      <CardContent className="pt-4 pr-10">
         <div className="space-y-3">
           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
             {idea.content}
@@ -96,6 +159,7 @@ export function IdeaCard({ idea, onStatusChange, isSelected = false, onOpenMenu 
                 <Globe className="size-3" />
               )}
               <span>{formatDate(idea.created_at)}</span>
+              {idea.pinned && <Pin className="size-3 text-primary" />}
             </div>
             <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
               <DropdownMenuTrigger asChild>
@@ -111,7 +175,55 @@ export function IdeaCard({ idea, onStatusChange, isSelected = false, onOpenMenu 
                   <span className="sr-only">Actions</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={handlePinToggle}>
+                  {idea.pinned ? (
+                    <>
+                      <PinOff className="size-4 mr-2" />
+                      Unpin
+                    </>
+                  ) : (
+                    <>
+                      <Pin className="size-4 mr-2" />
+                      Pin to top
+                    </>
+                  )}
+                </DropdownMenuItem>
+
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Palette className="size-4 mr-2" />
+                    Background color
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent className="p-2">
+                      <div className="grid grid-cols-6 gap-1.5">
+                        {CARD_COLORS.map((colorOption) => (
+                          <button
+                            key={colorOption.id ?? "default"}
+                            onClick={() => handleColorSelect(colorOption.id)}
+                            className={cn(
+                              "size-6 rounded-full border-2 transition-all hover:scale-110 flex items-center justify-center",
+                              colorOption.id === null 
+                                ? "bg-card border-border" 
+                                : "border-transparent",
+                              idea.background_color === colorOption.id && "ring-2 ring-primary ring-offset-1"
+                            )}
+                            style={colorOption.color ? { backgroundColor: colorOption.color } : undefined}
+                            title={colorOption.name}
+                          >
+                            {idea.background_color === colorOption.id && (
+                              <Check className="size-3 text-foreground/70" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
+
+                <DropdownMenuSeparator />
+
                 {idea.status !== "inbox" && (
                   <DropdownMenuItem onClick={() => handleStatusChange("inbox")}>
                     <Inbox className="size-4 mr-2" />

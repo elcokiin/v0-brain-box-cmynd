@@ -30,7 +30,7 @@ export async function GET(
   }
 }
 
-// PATCH - Update idea (content, status, tags)
+// PATCH - Update idea (content, status, tags, pinned, background_color)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -38,28 +38,16 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
-    const { content, status, tags } = body
-    
-    // Build dynamic update query
-    const updates: string[] = []
-    const values: Record<string, unknown> = { id }
-    
-    if (content !== undefined) {
-      values.content = content.trim()
-    }
-    if (status !== undefined) {
-      values.status = status
-    }
-    if (tags !== undefined) {
-      values.tags = tags
-    }
+    const { content, status, tags, pinned, background_color } = body
     
     const result = await sql`
       UPDATE ideas 
       SET 
-        content = COALESCE(${values.content ?? null}, content),
-        status = COALESCE(${values.status ?? null}, status),
-        tags = COALESCE(${values.tags ?? null}, tags),
+        content = COALESCE(${content !== undefined ? content.trim() : null}, content),
+        status = COALESCE(${status ?? null}, status),
+        tags = COALESCE(${tags ?? null}, tags),
+        pinned = COALESCE(${pinned ?? null}, pinned),
+        background_color = ${background_color !== undefined ? background_color : sql`background_color`},
         updated_at = NOW()
       WHERE id = ${id}
       RETURNING *

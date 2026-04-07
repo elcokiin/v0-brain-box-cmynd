@@ -23,13 +23,13 @@ export async function GET(request: NextRequest) {
         SELECT * FROM ideas 
         WHERE status = ${status} 
         AND content ILIKE ${'%' + search + '%'}
-        ORDER BY created_at DESC
+        ORDER BY pinned DESC, created_at DESC
       `
     } else {
       ideas = await sql`
         SELECT * FROM ideas 
         WHERE status = ${status}
-        ORDER BY created_at DESC
+        ORDER BY pinned DESC, created_at DESC
       `
     }
     
@@ -48,9 +48,6 @@ export async function POST(request: NextRequest) {
   // Check for API key authentication (for n8n/Telegram)
   const hasApiKey = validateApiKey(request)
   
-  // For now, allow both API key and unauthenticated requests from same origin
-  // In production, you'd want proper session auth for web requests
-  
   try {
     const body = await request.json()
     const { content, source = hasApiKey ? "telegram" : "web" } = body
@@ -63,8 +60,8 @@ export async function POST(request: NextRequest) {
     }
     
     const result = await sql`
-      INSERT INTO ideas (content, source, status)
-      VALUES (${content.trim()}, ${source}, 'inbox')
+      INSERT INTO ideas (content, source, status, pinned, background_color)
+      VALUES (${content.trim()}, ${source}, 'inbox', false, null)
       RETURNING *
     `
     
