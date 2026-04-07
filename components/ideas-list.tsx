@@ -140,6 +140,25 @@ export function IdeasList({ status, onOpenCapture }: IdeasListProps) {
     mutate()
   }
 
+  const handlePermanentDelete = async (id: string) => {
+    mutate(
+      (currentData) => {
+        if (!currentData) return currentData
+        return {
+          ideas: currentData.ideas.filter((idea) => idea.id !== id),
+        }
+      },
+      false
+    )
+
+    await fetch(`/api/ideas/${id}`, {
+      method: "DELETE",
+    })
+
+    mutate()
+    setSelectedIndex(-1)
+  }
+
   const emptyState = {
     inbox: {
       icon: Inbox,
@@ -189,7 +208,9 @@ export function IdeasList({ status, onOpenCapture }: IdeasListProps) {
           onStatusChange={handleStatusChange}
           onPinChange={handlePinChange}
           onColorChange={handleColorChange}
+          onPermanentDelete={status === "deleted" ? handlePermanentDelete : undefined}
           isSelected={startIndex + index === selectedIndex}
+          showTrashInfo={status === "deleted"}
         />
       ))}
     </div>

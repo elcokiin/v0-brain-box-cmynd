@@ -40,6 +40,16 @@ export async function PATCH(
     const body = await request.json()
     const { content, status, tags, pinned, background_color } = body
     
+    // Handle deleted_at based on status change
+    let deletedAtClause = sql`deleted_at`
+    if (status === 'deleted') {
+      // Set deleted_at only if not already set
+      deletedAtClause = sql`COALESCE(deleted_at, NOW())`
+    } else if (status === 'inbox' || status === 'archived') {
+      // Clear deleted_at when restoring
+      deletedAtClause = sql`NULL`
+    }
+    
     const result = await sql`
       UPDATE ideas 
       SET 
@@ -48,6 +58,7 @@ export async function PATCH(
         tags = COALESCE(${tags ?? null}, tags),
         pinned = COALESCE(${pinned ?? null}, pinned),
         background_color = ${background_color !== undefined ? background_color : sql`background_color`},
+        deleted_at = ${deletedAtClause},
         updated_at = NOW()
       WHERE id = ${id}
       RETURNING *
@@ -70,7 +81,7 @@ export async function PATCH(
   }
 }
 
-// DELETE - Soft delete (move to deleted status)
+// DELETE - Permanently delete idea from database
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -79,10 +90,7 @@ export async function DELETE(
     const { id } = await params
     
     const result = await sql`
-      UPDATE ideas 
-      SET status = 'deleted', updated_at = NOW()
-      WHERE id = ${id}
-      RETURNING *
+      DELETE FROM ideas WHERE id = ${id} RETURNING id
     `
     
     if (result.length === 0) {
@@ -92,7 +100,7 @@ export async function DELETE(
       )
     }
     
-    return NextResponse.json({ idea: result[0] })
+    return NextResponse.json({ success: true, id: result[0].id })
   } catch (error) {
     console.error("Failed to delete idea:", error)
     return NextResponse.json(
