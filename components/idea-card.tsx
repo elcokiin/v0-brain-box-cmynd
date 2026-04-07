@@ -15,7 +15,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuPortal,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Archive, Inbox, Trash2, MessageSquare, Globe, Pin, PinOff, Palette, Check } from "lucide-react"
+import { MoreHorizontal, Archive, Inbox, Trash2, MessageSquare, Globe, Pin, PinOff, Palette, Check, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface Idea {
@@ -28,6 +28,7 @@ export interface Idea {
   background_color: string | null
   created_at: string
   updated_at: string
+  deleted_at: string | null
 }
 
 const CARD_COLORS = [
@@ -50,8 +51,10 @@ interface IdeaCardProps {
   onStatusChange: (id: string, status: "inbox" | "archived" | "deleted") => void
   onPinChange: (id: string, pinned: boolean) => void
   onColorChange: (id: string, color: string | null) => void
+  onPermanentDelete?: (id: string) => void
   isSelected?: boolean
   onOpenMenu?: () => void
+  showTrashInfo?: boolean
 }
 
 export function IdeaCard({
@@ -59,8 +62,10 @@ export function IdeaCard({
   onStatusChange,
   onPinChange,
   onColorChange,
+  onPermanentDelete,
   isSelected = false,
-  onOpenMenu
+  onOpenMenu,
+  showTrashInfo = false
 }: IdeaCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -84,6 +89,31 @@ export function IdeaCard({
     setIsUpdating(true)
     await onColorChange(idea.id, colorId)
     setIsUpdating(false)
+  }
+
+  const handlePermanentDelete = async () => {
+    if (onPermanentDelete) {
+      setIsUpdating(true)
+      await onPermanentDelete(idea.id)
+      setIsUpdating(false)
+      setMenuOpen(false)
+    }
+  }
+
+  const formatTimeInTrash = (deletedAt: string | null) => {
+    if (!deletedAt) return null
+    const deleted = new Date(deletedAt)
+    const now = new Date()
+    const diffMs = now.getTime() - deleted.getTime()
+    const diffMinutes = Math.floor(diffMs / (1000 * 60))
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+    if (diffMinutes < 1) return "Just deleted"
+    if (diffMinutes < 60) return `In trash for ${diffMinutes}m`
+    if (diffHours < 24) return `In trash for ${diffHours}h`
+    if (diffDays === 1) return "In trash for 1 day"
+    return `In trash for ${diffDays} days`
   }
 
   useEffect(() => {
@@ -158,7 +188,14 @@ export function IdeaCard({
               ) : (
                 <Globe className="size-3" />
               )}
-              <span>{formatDate(idea.created_at)}</span>
+              {showTrashInfo && idea.deleted_at ? (
+                <span className="text-destructive/70 flex items-center gap-1">
+                  <Trash2 className="size-3" />
+                  {formatTimeInTrash(idea.deleted_at)}
+                </span>
+              ) : (
+                <span>{formatDate(idea.created_at)}</span>
+              )}
               {idea.pinned && <Pin className="size-3 text-primary" />}
             </div>
             <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
@@ -237,13 +274,23 @@ export function IdeaCard({
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => handleStatusChange("deleted")}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="size-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
+                {showTrashInfo && onPermanentDelete ? (
+                  <DropdownMenuItem
+                    onClick={handlePermanentDelete}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <AlertTriangle className="size-4 mr-2" />
+                    Delete permanently
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={() => handleStatusChange("deleted")}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="size-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

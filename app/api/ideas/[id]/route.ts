@@ -40,25 +40,48 @@ export async function PATCH(
     const body = await request.json()
     const { content, status, tags, pinned, background_color } = body
     
-    const result = await sql`
-      UPDATE ideas 
-      SET 
-        content = COALESCE(${content !== undefined ? content.trim() : null}, content),
-        status = COALESCE(${status ?? null}, status),
-        tags = COALESCE(${tags ?? null}, tags),
-        pinned = COALESCE(${pinned ?? null}, pinned),
-        background_color = ${background_color !== undefined ? background_color : sql`background_color`},
-        updated_at = NOW()
-      WHERE id = ${id}
-      RETURNING *
-    `
+    // First, get the current idea to merge with updates
+    const current = await sql`SELECT * FROM ideas WHERE id = ${id}`
     
-    if (result.length === 0) {
+    if (current.length === 0) {
       return NextResponse.json(
         { error: "Idea not found" },
         { status: 404 }
       )
     }
+    
+    const idea = current[0]
+    
+    // Determine new values
+    const newContent = content !== undefined ? content.trim() : idea.content
+    const newStatus = status !== undefined ? status : idea.status
+    const newTags = tags !== undefined ? tags : idea.tags
+    const newPinned = pinned !== undefined ? pinned : idea.pinned
+    const newBackgroundColor = background_color !== undefined ? background_color : idea.background_color
+    
+    // Handle deleted_at based on status transitions
+    let newDeletedAt = idea.deleted_at
+    if (status === 'deleted' && !idea.deleted_at) {
+      // Moving to trash - set deleted_at
+      newDeletedAt = new Date().toISOString()
+    } else if ((status === 'inbox' || status === 'archived') && idea.status === 'deleted') {
+      // Restoring from trash - clear deleted_at
+      newDeletedAt = null
+    }
+    
+    const result = await sql`
+      UPDATE ideas 
+      SET 
+        content = ${newContent},
+        status = ${newStatus},
+        tags = ${newTags},
+        pinned = ${newPinned},
+        background_color = ${newBackgroundColor},
+        deleted_at = ${newDeletedAt},
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING *
+    `
     
     return NextResponse.json({ idea: result[0] })
   } catch (error) {
@@ -70,7 +93,7 @@ export async function PATCH(
   }
 }
 
-// DELETE - Soft delete (move to deleted status)
+// DELETE - Permanently delete idea from database
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -79,10 +102,7 @@ export async function DELETE(
     const { id } = await params
     
     const result = await sql`
-      UPDATE ideas 
-      SET status = 'deleted', updated_at = NOW()
-      WHERE id = ${id}
-      RETURNING *
+      DELETE FROM ideas WHERE id = ${id} RETURNING id
     `
     
     if (result.length === 0) {
@@ -92,7 +112,7 @@ export async function DELETE(
       )
     }
     
-    return NextResponse.json({ idea: result[0] })
+    return NextResponse.json({ success: true, id: result[0].id })
   } catch (error) {
     console.error("Failed to delete idea:", error)
     return NextResponse.json(
