@@ -40,6 +40,8 @@ export async function PATCH(
     const body = await request.json()
     const { content, status, tags, pinned, background_color } = body
     
+    console.log("[v0] PATCH /api/ideas/[id] - id:", id, "body:", body)
+    
     const result = await sql`
       UPDATE ideas 
       SET 
@@ -52,6 +54,8 @@ export async function PATCH(
       WHERE id = ${id}
       RETURNING *
     `
+    
+    console.log("[v0] PATCH result:", result)
     
     if (result.length === 0) {
       return NextResponse.json(
