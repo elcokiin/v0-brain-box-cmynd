@@ -76,8 +76,6 @@ export function IdeasList({ status, onOpenCapture }: IdeasListProps) {
   }
 
   const handleStatusChange = async (id: string, newStatus: "inbox" | "archived" | "deleted") => {
-    console.log("[v0] ideas-list handleStatusChange:", id, newStatus)
-    
     mutate(
       (currentData) => {
         if (!currentData) return currentData
@@ -88,18 +86,11 @@ export function IdeasList({ status, onOpenCapture }: IdeasListProps) {
       false
     )
 
-    try {
-      const response = await fetch(`/api/ideas/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      })
-      console.log("[v0] PATCH response status:", response.status)
-      const data = await response.json()
-      console.log("[v0] PATCH response data:", data)
-    } catch (error) {
-      console.error("[v0] PATCH error:", error)
-    }
+    await fetch(`/api/ideas/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    })
 
     mutate()
     setSelectedIndex(-1)

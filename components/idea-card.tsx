@@ -67,14 +67,8 @@ export function IdeaCard({
   const cardRef = useRef<HTMLDivElement>(null)
 
   const handleStatusChange = async (newStatus: "inbox" | "archived" | "deleted") => {
-    console.log("[v0] handleStatusChange called with:", newStatus, "for idea:", idea.id)
     setIsUpdating(true)
-    try {
-      await onStatusChange(idea.id, newStatus)
-      console.log("[v0] onStatusChange completed successfully")
-    } catch (error) {
-      console.error("[v0] Error in onStatusChange:", error)
-    }
+    await onStatusChange(idea.id, newStatus)
     setIsUpdating(false)
     setMenuOpen(false)
   }
