@@ -2,23 +2,14 @@
 
 import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Brain } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center space-y-4">
-          <div className="flex justify-center">
-            <div className="size-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Brain className="size-8 text-primary" />
-            </div>
-          </div>
+        <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Welcome to BrainBox</CardTitle>
-          <CardDescription className="text-base">
-            Capture ideas anywhere, review them when you&apos;re ready. Sign in to access your personal idea space.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button 
@@ -46,9 +37,6 @@ export default function LoginPage() {
             </svg>
             Continue with Google
           </Button>
-          <p className="text-xs text-center text-muted-foreground">
-            By signing in, you agree to our terms of service and privacy policy.
-          </p>
         </CardContent>
       </Card>
     </div>
