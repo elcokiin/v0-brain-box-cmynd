@@ -1,24 +1,60 @@
 "use client"
 
+import { useState, useEffect, useCallback } from "react"
 import useSWR from "swr"
 import { IdeaCard, type Idea } from "@/components/idea-card"
 import { QuickCapture } from "@/components/quick-capture"
 import { Empty } from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useKeyboardNavigation } from "@/hooks/use-keyboard-navigation"
 import { Inbox, Archive, Trash2 } from "lucide-react"
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 interface IdeasListProps {
   status: "inbox" | "archived" | "deleted"
+  onOpenCapture?: () => void
 }
 
-export function IdeasList({ status }: IdeasListProps) {
+export function IdeasList({ status, onOpenCapture }: IdeasListProps) {
+  const [selectedIndex, setSelectedIndex] = useState(-1)
+  const [keyboardEnabled, setKeyboardEnabled] = useState(true)
+  const [captureOpen, setCaptureOpen] = useState(false)
+
   const { data, error, isLoading, mutate } = useSWR<{ ideas: Idea[] }>(
     `/api/ideas?status=${status}`,
     fetcher,
     { refreshInterval: 5000 }
   )
+
+  const ideas = data?.ideas ?? []
+
+  useEffect(() => {
+    const stored = localStorage.getItem("brainbox-keyboard-nav")
+    if (stored !== null) setKeyboardEnabled(stored === "true")
+
+    const handleToggle = (e: Event) => {
+      const custom = e as CustomEvent
+      setKeyboardEnabled(custom.detail)
+    }
+    window.addEventListener("brainbox-keyboard-nav", handleToggle)
+    return () => window.removeEventListener("brainbox-keyboard-nav", handleToggle)
+  }, [])
+
+  const handleNew = useCallback(() => {
+    if (status === "inbox") {
+      setCaptureOpen(true)
+      onOpenCapture?.()
+    }
+  }, [status, onOpenCapture])
+
+  useKeyboardNavigation({
+    itemCount: ideas.length,
+    selectedIndex,
+    onSelect: setSelectedIndex,
+    onNew: handleNew,
+    enabled: keyboardEnabled && !captureOpen,
+  })
 
   const handleCapture = async (content: string) => {
     const response = await fetch("/api/ideas", {
@@ -30,10 +66,14 @@ export function IdeasList({ status }: IdeasListProps) {
     if (response.ok) {
       mutate()
     }
+    setCaptureOpen(false)
+  }
+
+  const handleCaptureClose = () => {
+    setCaptureOpen(false)
   }
 
   const handleStatusChange = async (id: string, newStatus: "inbox" | "archived" | "deleted") => {
-    // Optimistic update
     mutate(
       (currentData) => {
         if (!currentData) return currentData
@@ -51,13 +91,14 @@ export function IdeasList({ status }: IdeasListProps) {
     })
 
     mutate()
+    setSelectedIndex(-1)
   }
 
   const emptyState = {
     inbox: {
       icon: Inbox,
       title: "Your inbox is empty",
-      description: "Capture ideas from the web or send them via Telegram",
+      description: "Press 'n' to capture a new idea",
     },
     archived: {
       icon: Archive,
@@ -73,10 +114,9 @@ export function IdeasList({ status }: IdeasListProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        {status === "inbox" && <Skeleton className="h-12 w-full" />}
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-24 w-full" />
+      <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Skeleton key={i} className="h-32 w-full break-inside-avoid" />
         ))}
       </div>
     )
@@ -92,12 +132,18 @@ export function IdeasList({ status }: IdeasListProps) {
     )
   }
 
-  const ideas = data?.ideas ?? []
   const EmptyIcon = emptyState[status].icon
 
   return (
-    <div className="space-y-4">
-      {status === "inbox" && <QuickCapture onCapture={handleCapture} />}
+    <div className="space-y-6">
+      {status === "inbox" && (
+        <QuickCapture
+          onCapture={handleCapture}
+          isOpen={captureOpen}
+          onOpenChange={setCaptureOpen}
+          onClose={handleCaptureClose}
+        />
+      )}
 
       {ideas.length === 0 ? (
         <Empty
@@ -106,12 +152,13 @@ export function IdeasList({ status }: IdeasListProps) {
           description={emptyState[status].description}
         />
       ) : (
-        <div className="space-y-3">
-          {ideas.map((idea) => (
+        <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
+          {ideas.map((idea, index) => (
             <IdeaCard
               key={idea.id}
               idea={idea}
               onStatusChange={handleStatusChange}
+              isSelected={index === selectedIndex}
             />
           ))}
         </div>

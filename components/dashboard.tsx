@@ -2,28 +2,17 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { IdeasList } from "@/components/ideas-list"
-import { Inbox, Archive, Trash2, Brain } from "lucide-react"
+import { SettingsDialog } from "@/components/settings-dialog"
+import { Inbox, Archive, Trash2 } from "lucide-react"
 
 export function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container max-w-2xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center size-9 rounded-lg bg-primary text-primary-foreground">
-              <Brain className="size-5" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight">BrainBox</h1>
-              <p className="text-xs text-muted-foreground">Capture ideas, anywhere</p>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="container max-w-2xl mx-auto px-4 py-6">
+      <SettingsDialog />
+      
+      <main className="container max-w-5xl mx-auto px-4 py-8 pt-16">
         <Tabs defaultValue="inbox" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-3">
             <TabsTrigger value="inbox" className="gap-2">
               <Inbox className="size-4" />
               <span className="hidden sm:inline">Inbox</span>

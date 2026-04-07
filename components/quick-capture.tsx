@@ -5,18 +5,23 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
+import { Kbd } from "@/components/ui/kbd"
 import { Plus, Send } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface QuickCaptureProps {
   onCapture: (content: string) => Promise<void>
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
 }
 
-export function QuickCapture({ onCapture }: QuickCaptureProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
+export function QuickCapture({ onCapture, isOpen, onOpenChange, onClose }: QuickCaptureProps) {
   const [content, setContent] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const isExpanded = isOpen ?? false
 
   useEffect(() => {
     if (isExpanded && textareaRef.current) {
@@ -31,10 +36,16 @@ export function QuickCapture({ onCapture }: QuickCaptureProps) {
     try {
       await onCapture(content.trim())
       setContent("")
-      setIsExpanded(false)
+      onOpenChange?.(false)
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleClose = () => {
+    onOpenChange?.(false)
+    onClose?.()
+    setContent("")
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -43,20 +54,20 @@ export function QuickCapture({ onCapture }: QuickCaptureProps) {
       handleSubmit()
     }
     if (e.key === "Escape") {
-      setIsExpanded(false)
-      setContent("")
+      handleClose()
     }
   }
 
   if (!isExpanded) {
     return (
       <Button
-        onClick={() => setIsExpanded(true)}
+        onClick={() => onOpenChange?.(true)}
         className="w-full h-12 justify-start gap-3 text-muted-foreground font-normal border-dashed"
         variant="outline"
       >
         <Plus className="size-4" />
         <span>Capture a new idea...</span>
+        <Kbd className="ml-auto">n</Kbd>
       </Button>
     )
   }
@@ -74,18 +85,16 @@ export function QuickCapture({ onCapture }: QuickCaptureProps) {
           disabled={isSubmitting}
         />
         <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Esc</kbd> to cancel,{" "}
-            <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Cmd+Enter</kbd> to save
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <Kbd>Esc</Kbd> cancel
+            <span className="mx-1">/</span>
+            <Kbd>Cmd+Enter</Kbd> save
           </p>
           <div className="flex gap-2">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                setIsExpanded(false)
-                setContent("")
-              }}
+              onClick={handleClose}
               disabled={isSubmitting}
             >
               Cancel

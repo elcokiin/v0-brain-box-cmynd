@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -27,16 +27,39 @@ export interface Idea {
 interface IdeaCardProps {
   idea: Idea
   onStatusChange: (id: string, status: "inbox" | "archived" | "deleted") => void
+  isSelected?: boolean
+  onOpenMenu?: () => void
 }
 
-export function IdeaCard({ idea, onStatusChange }: IdeaCardProps) {
+export function IdeaCard({ idea, onStatusChange, isSelected = false, onOpenMenu }: IdeaCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
 
   const handleStatusChange = async (newStatus: "inbox" | "archived" | "deleted") => {
     setIsUpdating(true)
     await onStatusChange(idea.id, newStatus)
     setIsUpdating(false)
+    setMenuOpen(false)
   }
+
+  useEffect(() => {
+    if (isSelected && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    }
+  }, [isSelected])
+
+  useEffect(() => {
+    if (isSelected && onOpenMenu) {
+      const handleEnter = (e: KeyboardEvent) => {
+        if (e.key === "Enter" && isSelected) {
+          setMenuOpen(true)
+        }
+      }
+      window.addEventListener("keydown", handleEnter)
+      return () => window.removeEventListener("keydown", handleEnter)
+    }
+  }, [isSelected, onOpenMenu])
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -53,17 +76,19 @@ export function IdeaCard({ idea, onStatusChange }: IdeaCardProps) {
 
   return (
     <Card
+      ref={cardRef}
       className={cn(
-        "group transition-all duration-200 hover:shadow-md",
-        isUpdating && "opacity-50 pointer-events-none"
+        "group transition-all duration-200 hover:shadow-md break-inside-avoid",
+        isUpdating && "opacity-50 pointer-events-none",
+        isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
       )}
     >
       <CardContent className="pt-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0 space-y-2">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-              {idea.content}
-            </p>
+        <div className="space-y-3">
+          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+            {idea.content}
+          </p>
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               {idea.source === "telegram" ? (
                 <MessageSquare className="size-3" />
@@ -71,51 +96,54 @@ export function IdeaCard({ idea, onStatusChange }: IdeaCardProps) {
                 <Globe className="size-3" />
               )}
               <span>{formatDate(idea.created_at)}</span>
-              {idea.tags && idea.tags.length > 0 && (
-                <div className="flex gap-1">
-                  {idea.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="text-xs px-1.5 py-0">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
             </div>
+            <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className={cn(
+                    "opacity-0 group-hover:opacity-100 transition-opacity",
+                    isSelected && "opacity-100"
+                  )}
+                >
+                  <MoreHorizontal className="size-4" />
+                  <span className="sr-only">Actions</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {idea.status !== "inbox" && (
+                  <DropdownMenuItem onClick={() => handleStatusChange("inbox")}>
+                    <Inbox className="size-4 mr-2" />
+                    Move to Inbox
+                  </DropdownMenuItem>
+                )}
+                {idea.status !== "archived" && (
+                  <DropdownMenuItem onClick={() => handleStatusChange("archived")}>
+                    <Archive className="size-4 mr-2" />
+                    Archive
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleStatusChange("deleted")}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="size-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <MoreHorizontal className="size-4" />
-                <span className="sr-only">Actions</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {idea.status !== "inbox" && (
-                <DropdownMenuItem onClick={() => handleStatusChange("inbox")}>
-                  <Inbox className="size-4 mr-2" />
-                  Move to Inbox
-                </DropdownMenuItem>
-              )}
-              {idea.status !== "archived" && (
-                <DropdownMenuItem onClick={() => handleStatusChange("archived")}>
-                  <Archive className="size-4 mr-2" />
-                  Archive
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => handleStatusChange("deleted")}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="size-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {idea.tags && idea.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {idea.tags.map((tag) => (
+                <Badge key={tag} variant="secondary" className="text-xs px-1.5 py-0">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
