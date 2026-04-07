@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useTheme } from "next-themes"
 import {
   Dialog,
   DialogContent,
@@ -15,39 +16,21 @@ import { Switch } from "@/components/ui/switch"
 import { Settings, Keyboard, Moon, Sun, Monitor } from "lucide-react"
 import { Kbd } from "@/components/ui/kbd"
 
-type Theme = "light" | "dark" | "system"
-
 interface SettingsDialogProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
-  const [theme, setTheme] = useState<Theme>("system")
+  const { theme, setTheme } = useTheme()
   const [keyboardNav, setKeyboardNav] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const stored = localStorage.getItem("brainbox-theme") as Theme | null
-    if (stored) setTheme(stored)
-    
+    setMounted(true)
     const storedNav = localStorage.getItem("brainbox-keyboard-nav")
     if (storedNav !== null) setKeyboardNav(storedNav === "true")
   }, [])
-
-  const applyTheme = (newTheme: Theme) => {
-    setTheme(newTheme)
-    localStorage.setItem("brainbox-theme", newTheme)
-    
-    const root = document.documentElement
-    root.classList.remove("light", "dark")
-    
-    if (newTheme === "system") {
-      const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-      root.classList.add(systemDark ? "dark" : "light")
-    } else {
-      root.classList.add(newTheme)
-    }
-  }
 
   const toggleKeyboardNav = (enabled: boolean) => {
     setKeyboardNav(enabled)
@@ -77,27 +60,27 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             <Label className="text-sm font-medium">Theme</Label>
             <div className="flex gap-2">
               <Button
-                variant={theme === "light" ? "default" : "outline"}
+                variant={mounted && theme === "light" ? "default" : "outline"}
                 size="sm"
-                onClick={() => applyTheme("light")}
+                onClick={() => setTheme("light")}
                 className="flex-1 gap-2"
               >
                 <Sun className="size-4" />
                 Light
               </Button>
               <Button
-                variant={theme === "dark" ? "default" : "outline"}
+                variant={mounted && theme === "dark" ? "default" : "outline"}
                 size="sm"
-                onClick={() => applyTheme("dark")}
+                onClick={() => setTheme("dark")}
                 className="flex-1 gap-2"
               >
                 <Moon className="size-4" />
                 Dark
               </Button>
               <Button
-                variant={theme === "system" ? "default" : "outline"}
+                variant={mounted && theme === "system" ? "default" : "outline"}
                 size="sm"
-                onClick={() => applyTheme("system")}
+                onClick={() => setTheme("system")}
                 className="flex-1 gap-2"
               >
                 <Monitor className="size-4" />
