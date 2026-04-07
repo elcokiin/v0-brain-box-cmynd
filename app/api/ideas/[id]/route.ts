@@ -40,61 +40,48 @@ export async function PATCH(
     const body = await request.json()
     const { content, status, tags, pinned, background_color } = body
     
-    let result
+    // First, get the current idea to merge with updates
+    const current = await sql`SELECT * FROM ideas WHERE id = ${id}`
     
-    // Handle different status changes with separate queries
-    if (status === 'deleted') {
-      // Moving to trash - set deleted_at if not already set
-      result = await sql`
-        UPDATE ideas 
-        SET 
-          content = COALESCE(${content !== undefined ? content.trim() : null}, content),
-          status = 'deleted',
-          tags = COALESCE(${tags ?? null}, tags),
-          pinned = COALESCE(${pinned ?? null}, pinned),
-          background_color = COALESCE(${background_color ?? null}, background_color),
-          deleted_at = COALESCE(deleted_at, NOW()),
-          updated_at = NOW()
-        WHERE id = ${id}
-        RETURNING *
-      `
-    } else if (status === 'inbox' || status === 'archived') {
-      // Restoring from trash - clear deleted_at
-      result = await sql`
-        UPDATE ideas 
-        SET 
-          content = COALESCE(${content !== undefined ? content.trim() : null}, content),
-          status = ${status},
-          tags = COALESCE(${tags ?? null}, tags),
-          pinned = COALESCE(${pinned ?? null}, pinned),
-          background_color = COALESCE(${background_color ?? null}, background_color),
-          deleted_at = NULL,
-          updated_at = NOW()
-        WHERE id = ${id}
-        RETURNING *
-      `
-    } else {
-      // No status change - just update other fields
-      result = await sql`
-        UPDATE ideas 
-        SET 
-          content = COALESCE(${content !== undefined ? content.trim() : null}, content),
-          status = COALESCE(${status ?? null}, status),
-          tags = COALESCE(${tags ?? null}, tags),
-          pinned = COALESCE(${pinned ?? null}, pinned),
-          background_color = COALESCE(${background_color ?? null}, background_color),
-          updated_at = NOW()
-        WHERE id = ${id}
-        RETURNING *
-      `
-    }
-    
-    if (result.length === 0) {
+    if (current.length === 0) {
       return NextResponse.json(
         { error: "Idea not found" },
         { status: 404 }
       )
     }
+    
+    const idea = current[0]
+    
+    // Determine new values
+    const newContent = content !== undefined ? content.trim() : idea.content
+    const newStatus = status !== undefined ? status : idea.status
+    const newTags = tags !== undefined ? tags : idea.tags
+    const newPinned = pinned !== undefined ? pinned : idea.pinned
+    const newBackgroundColor = background_color !== undefined ? background_color : idea.background_color
+    
+    // Handle deleted_at based on status transitions
+    let newDeletedAt = idea.deleted_at
+    if (status === 'deleted' && !idea.deleted_at) {
+      // Moving to trash - set deleted_at
+      newDeletedAt = new Date().toISOString()
+    } else if ((status === 'inbox' || status === 'archived') && idea.status === 'deleted') {
+      // Restoring from trash - clear deleted_at
+      newDeletedAt = null
+    }
+    
+    const result = await sql`
+      UPDATE ideas 
+      SET 
+        content = ${newContent},
+        status = ${newStatus},
+        tags = ${newTags},
+        pinned = ${newPinned},
+        background_color = ${newBackgroundColor},
+        deleted_at = ${newDeletedAt},
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING *
+    `
     
     return NextResponse.json({ idea: result[0] })
   } catch (error) {
