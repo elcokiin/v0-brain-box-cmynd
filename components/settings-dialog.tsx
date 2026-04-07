@@ -17,7 +17,12 @@ import { Kbd } from "@/components/ui/kbd"
 
 type Theme = "light" | "dark" | "system"
 
-export function SettingsDialog() {
+interface SettingsDialogProps {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [theme, setTheme] = useState<Theme>("system")
   const [keyboardNav, setKeyboardNav] = useState(true)
 
@@ -51,7 +56,7 @@ export function SettingsDialog() {
   }
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon" className="fixed top-4 left-4 z-50">
           <Settings className="size-5" />
@@ -125,6 +130,31 @@ export function SettingsDialog() {
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">New idea</span>
                 <Kbd>n</Kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Settings</span>
+                <Kbd>e</Kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Inbox</span>
+                <div className="flex gap-1">
+                  <Kbd>Ctrl</Kbd>
+                  <Kbd>1</Kbd>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Archived</span>
+                <div className="flex gap-1">
+                  <Kbd>Ctrl</Kbd>
+                  <Kbd>2</Kbd>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Trash</span>
+                <div className="flex gap-1">
+                  <Kbd>Ctrl</Kbd>
+                  <Kbd>3</Kbd>
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Navigate down</span>
