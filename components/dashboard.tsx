@@ -5,10 +5,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { IdeasList } from "@/components/ideas-list"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { Inbox, Archive, Trash2 } from "lucide-react"
+import { UserMenu } from "@/components/user-menu"
 
 type TabValue = "inbox" | "archived" | "deleted"
 
-export function Dashboard() {
+interface DashboardProps {
+  user: {
+    name?: string | null
+    email?: string | null
+    image?: string | null
+  }
+}
+
+export function Dashboard({ user }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<TabValue>("inbox")
   const [settingsOpen, setSettingsOpen] = useState(false)
 
@@ -57,6 +66,11 @@ export function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      
+      {/* User menu in top right */}
+      <div className="fixed top-4 right-4 z-50">
+        <UserMenu user={user} />
+      </div>
       
       <main className="container max-w-5xl mx-auto px-4 py-8 pt-16">
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)} className="space-y-6">

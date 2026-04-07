@@ -1,18 +1,46 @@
 import { sql } from "@/lib/db"
+import { auth } from "@/lib/auth"
 import { NextRequest, NextResponse } from "next/server"
 
 // Validate API key for external integrations (n8n, Telegram, etc.)
-function validateApiKey(request: NextRequest): boolean {
+// Returns user_id if valid, null otherwise
+async function validateApiKey(request: NextRequest): Promise<string | null> {
   const authHeader = request.headers.get("authorization")
-  if (!authHeader?.startsWith("Bearer ")) return false
+  if (!authHeader?.startsWith("Bearer ")) return null
   
   const apiKey = authHeader.slice(7)
-  return apiKey === process.env.BRAINBOX_API_KEY
+  if (apiKey !== process.env.BRAINBOX_API_KEY) return null
+  
+  // Get the first user (for single-user API key setup)
+  // In production, you might want to associate API keys with specific users
+  const users = await sql`SELECT id FROM users LIMIT 1`
+  return users.length > 0 ? users[0].id : null
+}
+
+// Get authenticated user ID from session or API key
+async function getAuthenticatedUserId(request: NextRequest): Promise<string | null> {
+  // First check session auth
+  const session = await auth()
+  if (session?.user?.id) {
+    return session.user.id
+  }
+  
+  // Fall back to API key auth
+  return validateApiKey(request)
 }
 
 // GET - Fetch all ideas (for web dashboard)
 export async function GET(request: NextRequest) {
   try {
+    const userId = await getAuthenticatedUserId(request)
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+    
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status") || "inbox"
     const search = searchParams.get("search")
@@ -21,14 +49,16 @@ export async function GET(request: NextRequest) {
     if (search) {
       ideas = await sql`
         SELECT * FROM ideas 
-        WHERE status = ${status} 
+        WHERE user_id = ${userId}
+        AND status = ${status} 
         AND content ILIKE ${'%' + search + '%'}
         ORDER BY pinned DESC, created_at DESC
       `
     } else {
       ideas = await sql`
         SELECT * FROM ideas 
-        WHERE status = ${status}
+        WHERE user_id = ${userId}
+        AND status = ${status}
         ORDER BY pinned DESC, created_at DESC
       `
     }
@@ -45,12 +75,22 @@ export async function GET(request: NextRequest) {
 
 // POST - Create new idea (API key auth for external tools)
 export async function POST(request: NextRequest) {
-  // Check for API key authentication (for n8n/Telegram)
-  const hasApiKey = validateApiKey(request)
-  
   try {
+    const userId = await getAuthenticatedUserId(request)
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+    
+    // Determine source based on auth method
+    const session = await auth()
+    const source = session?.user?.id ? "web" : "telegram"
+    
     const body = await request.json()
-    const { content, source = hasApiKey ? "telegram" : "web" } = body
+    const { content } = body
     
     if (!content || typeof content !== "string" || content.trim().length === 0) {
       return NextResponse.json(
@@ -60,8 +100,8 @@ export async function POST(request: NextRequest) {
     }
     
     const result = await sql`
-      INSERT INTO ideas (content, source, status, pinned, background_color)
-      VALUES (${content.trim()}, ${source}, 'inbox', false, null)
+      INSERT INTO ideas (user_id, content, source, status, pinned, background_color)
+      VALUES (${userId}, ${content.trim()}, ${source}, 'inbox', false, null)
       RETURNING *
     `
     

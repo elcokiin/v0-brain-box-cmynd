@@ -1,5 +1,27 @@
 import { sql } from "@/lib/db"
+import { auth } from "@/lib/auth"
 import { NextRequest, NextResponse } from "next/server"
+
+// Validate API key for external integrations
+async function validateApiKey(request: NextRequest): Promise<string | null> {
+  const authHeader = request.headers.get("authorization")
+  if (!authHeader?.startsWith("Bearer ")) return null
+  
+  const apiKey = authHeader.slice(7)
+  if (apiKey !== process.env.BRAINBOX_API_KEY) return null
+  
+  const users = await sql`SELECT id FROM users LIMIT 1`
+  return users.length > 0 ? users[0].id : null
+}
+
+// Get authenticated user ID from session or API key
+async function getAuthenticatedUserId(request: NextRequest): Promise<string | null> {
+  const session = await auth()
+  if (session?.user?.id) {
+    return session.user.id
+  }
+  return validateApiKey(request)
+}
 
 // GET - Fetch single idea
 export async function GET(
@@ -7,10 +29,19 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const userId = await getAuthenticatedUserId(request)
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+    
     const { id } = await params
     
     const result = await sql`
-      SELECT * FROM ideas WHERE id = ${id}
+      SELECT * FROM ideas WHERE id = ${id} AND user_id = ${userId}
     `
     
     if (result.length === 0) {
@@ -36,12 +67,21 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const userId = await getAuthenticatedUserId(request)
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+    
     const { id } = await params
     const body = await request.json()
     const { content, status, tags, pinned, background_color } = body
     
-    // First, get the current idea to merge with updates
-    const current = await sql`SELECT * FROM ideas WHERE id = ${id}`
+    // First, get the current idea (verify ownership)
+    const current = await sql`SELECT * FROM ideas WHERE id = ${id} AND user_id = ${userId}`
     
     if (current.length === 0) {
       return NextResponse.json(
@@ -62,10 +102,8 @@ export async function PATCH(
     // Handle deleted_at based on status transitions
     let newDeletedAt = idea.deleted_at
     if (status === 'deleted' && !idea.deleted_at) {
-      // Moving to trash - set deleted_at
       newDeletedAt = new Date().toISOString()
     } else if ((status === 'inbox' || status === 'archived') && idea.status === 'deleted') {
-      // Restoring from trash - clear deleted_at
       newDeletedAt = null
     }
     
@@ -79,7 +117,7 @@ export async function PATCH(
         background_color = ${newBackgroundColor},
         deleted_at = ${newDeletedAt},
         updated_at = NOW()
-      WHERE id = ${id}
+      WHERE id = ${id} AND user_id = ${userId}
       RETURNING *
     `
     
@@ -99,10 +137,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const userId = await getAuthenticatedUserId(request)
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+    
     const { id } = await params
     
     const result = await sql`
-      DELETE FROM ideas WHERE id = ${id} RETURNING id
+      DELETE FROM ideas WHERE id = ${id} AND user_id = ${userId} RETURNING id
     `
     
     if (result.length === 0) {

@@ -1,5 +1,13 @@
+import { auth } from "@/lib/auth"
+import { redirect } from "next/navigation"
 import { Dashboard } from "@/components/dashboard"
 
-export default function Home() {
-  return <Dashboard />
+export default async function Home() {
+  const session = await auth()
+  
+  if (!session?.user) {
+    redirect("/login")
+  }
+
+  return <Dashboard user={session.user} />
 }
