@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { neon } from "@neondatabase/serverless"
+import { sql } from "@/lib/db"
 import crypto from "crypto"
-
-const sql = neon(process.env.DATABASE_URL!)
 
 // Generate a secure random API key
 function generateApiKey(): string {
