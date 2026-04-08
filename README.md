@@ -265,8 +265,8 @@ CREATE TABLE ideas (
 ## Getting Started
 
 ```bash
-pnpm install
-pnpm dev
+bun install
+bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to view the app.
