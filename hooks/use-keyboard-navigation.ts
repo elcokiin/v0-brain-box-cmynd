@@ -33,6 +33,11 @@ export function useKeyboardNavigation({
         return
       }
 
+      // Ignore when Ctrl/Meta/Alt is pressed to avoid conflicts with browser shortcuts
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        return
+      }
+
       switch (e.key.toLowerCase()) {
         case "n":
           e.preventDefault()
