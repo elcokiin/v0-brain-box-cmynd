@@ -13,22 +13,32 @@ function hashApiKey(key: string): string {
 // Returns user_id if valid, null otherwise
 async function validateApiKey(request: NextRequest): Promise<string | null> {
   const authHeader = request.headers.get("authorization")
-  if (!authHeader?.startsWith("Bearer ")) return null
+  console.log("[v0] validateApiKey - authHeader:", authHeader ? "present" : "missing")
+  
+  if (!authHeader?.startsWith("Bearer ")) {
+    console.log("[v0] validateApiKey - no Bearer prefix")
+    return null
+  }
   
   const apiKey = authHeader.slice(7)
+  console.log("[v0] validateApiKey - apiKey length:", apiKey.length, "prefix:", apiKey.slice(0, 5))
   
   // First check legacy global API key (for backward compatibility)
   if (process.env.BRAINBOX_API_KEY && apiKey === process.env.BRAINBOX_API_KEY) {
+    console.log("[v0] validateApiKey - matched legacy key")
     const users = await sql`SELECT id FROM users LIMIT 1`
     return users.length > 0 ? users[0].id : null
   }
   
   // Check user-created API keys
   const hashedKey = hashApiKey(apiKey)
+  console.log("[v0] validateApiKey - hashedKey:", hashedKey.slice(0, 16) + "...")
+  
   const result = await sql`
     SELECT user_id FROM api_keys 
     WHERE key_hash = ${hashedKey}
   `
+  console.log("[v0] validateApiKey - db result count:", result.length)
   
   if (result.length > 0) {
     // Update last_used_at timestamp
@@ -37,9 +47,11 @@ async function validateApiKey(request: NextRequest): Promise<string | null> {
       SET last_used_at = NOW() 
       WHERE key_hash = ${hashedKey}
     `
+    console.log("[v0] validateApiKey - found user_id:", result[0].user_id)
     return result[0].user_id
   }
   
+  console.log("[v0] validateApiKey - no matching key found")
   return null
 }
 
