@@ -1,8 +1,9 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from '@/components/theme-provider'
 import { SessionProvider } from '@/components/session-provider'
+import { PwaRegister } from '@/components/pwa-register'
 import './globals.css'
 
 const _inter = Inter({ subsets: ["latin"] });
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
   title: 'BrainBox - Capture Ideas Anywhere',
   description: 'A personal idea management system for frictionless capture and thoughtful review.',
   generator: 'v0.app',
+  manifest: '/manifest.webmanifest',
   icons: {
     icon: [
       {
@@ -31,6 +33,10 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport: Viewport = {
+  themeColor: '#6f5be8',
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -45,6 +51,7 @@ export default function RootLayout({
           </ThemeProvider>
         </SessionProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
+        <PwaRegister />
       </body>
     </html>
   )

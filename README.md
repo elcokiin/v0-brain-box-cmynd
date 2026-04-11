@@ -10,6 +10,7 @@ A personal idea management system designed for **frictionless capture**. BrainBo
 - **Pin & Color Coding** - Pin important ideas and customize card backgrounds
 - **Trash with Recovery** - Soft delete with time tracking and permanent delete option
 - **API Keys for HTTP Capture** - Create per-user keys from Settings and send ideas via HTTP
+- **PWA Install Support** - Install BrainBox on mobile home screen
 
 ## Keyboard Shortcuts
 

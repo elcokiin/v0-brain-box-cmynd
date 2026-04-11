@@ -13,17 +13,18 @@ import {
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Settings, Keyboard, Moon, Sun, Monitor, Palette, Key } from "lucide-react"
+import { Settings, Keyboard, Moon, Sun, Monitor, Palette, Key, Smartphone } from "lucide-react"
 import { Kbd } from "@/components/ui/kbd"
 import { cn } from "@/lib/utils"
 import { ApiKeysManager } from "@/components/api-keys-manager"
+import { PwaInstallManager } from "@/components/pwa-install-manager"
 
 interface SettingsDialogProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
 
-type SettingsSection = "appearance" | "keyboard" | "api"
+type SettingsSection = "appearance" | "keyboard" | "api" | "install"
 
 export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const { theme, setTheme } = useTheme()
@@ -97,8 +98,8 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
         <div className="min-h-0 px-4 pb-4 sm:px-6 sm:pb-6">
           <div className="grid h-full min-h-0 gap-4 md:grid-cols-[180px_minmax(0,1fr)]">
-            <aside className="rounded-lg border bg-muted/20 p-2">
-            <nav className="flex gap-2 md:flex-col">
+            <aside className="h-14 rounded-lg border bg-muted/20 p-2 md:h-auto">
+            <nav className="flex h-full items-center gap-2 overflow-x-auto whitespace-nowrap md:h-auto md:flex-col md:items-stretch md:overflow-visible">
               <Button
                 type="button"
                 variant="ghost"
@@ -137,6 +138,19 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               >
                 <Key className="size-4" />
                 API Keys
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setSection("install")}
+                className={cn(
+                  "h-9 justify-start gap-2 rounded-md whitespace-nowrap md:hidden",
+                  section === "install" && "bg-background shadow-sm text-foreground"
+                )}
+              >
+                <Smartphone className="size-4" />
+                Install App
               </Button>
             </nav>
           </aside>
@@ -316,6 +330,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             )}
 
             {section === "api" && <ApiKeysManager />}
+            {isMobile && section === "install" && <PwaInstallManager />}
           </section>
           </div>
         </div>
