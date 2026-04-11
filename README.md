@@ -9,7 +9,7 @@ A personal idea management system designed for **frictionless capture**. BrainBo
 - **Pinterest-Style Layout** - Masonry grid for visual organization
 - **Pin & Color Coding** - Pin important ideas and customize card backgrounds
 - **Trash with Recovery** - Soft delete with time tracking and permanent delete option
-- **External API** - Connect with automation tools like n8n, Make, Zapier, or any HTTP client
+- **API Keys for HTTP Capture** - Create per-user keys from Settings and send ideas via HTTP
 
 ## Keyboard Shortcuts
 
@@ -30,7 +30,6 @@ A personal idea management system designed for **frictionless capture**. BrainBo
 | Variable | Description |
 |----------|-------------|
 | `DATABASE_URL` | Neon PostgreSQL connection string |
-| `BRAINBOX_API_KEY` | Secret key for API authentication (32+ characters recommended) |
 
 ---
 
@@ -43,10 +42,13 @@ https://your-app.vercel.app/api/ideas
 
 ### Authentication
 
-External API requests require a Bearer token in the Authorization header:
+You can authenticate API requests in two ways:
 
-```
-Authorization: Bearer YOUR_BRAINBOX_API_KEY
+1. Browser session cookie (when logged in to the web app)
+2. API key in header:
+
+```http
+Authorization: Bearer bb_your_api_key_here
 ```
 
 ### Endpoints
@@ -55,7 +57,7 @@ Authorization: Bearer YOUR_BRAINBOX_API_KEY
 ```http
 POST /api/ideas
 Content-Type: application/json
-Authorization: Bearer YOUR_API_KEY
+Authorization: Bearer bb_your_api_key_here
 
 {
   "content": "My brilliant idea"
@@ -68,7 +70,7 @@ Authorization: Bearer YOUR_API_KEY
   "idea": {
     "id": "uuid",
     "content": "My brilliant idea",
-    "source": "telegram",
+    "source": "api",
     "status": "inbox",
     "pinned": false,
     "background_color": null,
@@ -104,132 +106,22 @@ Content-Type: application/json
 DELETE /api/ideas/{id}
 ```
 
----
+### Generate API Keys
 
-## Connecting with n8n
+Open Settings and go to `API Keys`:
 
-BrainBox is designed to integrate seamlessly with [n8n](https://n8n.io) for automation workflows. A common use case is capturing ideas from Telegram messages.
-
-### Setup Steps
-
-#### 1. Generate an API Key
-
-Create a strong, random API key (minimum 32 characters):
-
-```bash
-openssl rand -base64 32
-```
-
-Add this as `BRAINBOX_API_KEY` in your Vercel project environment variables.
-
-#### 2. Create n8n Credentials
-
-In n8n, create a new **Header Auth** credential:
-
-- **Name:** `BrainBox API`
-- **Header Name:** `Authorization`
-- **Header Value:** `Bearer YOUR_BRAINBOX_API_KEY`
-
-#### 3. Build the Workflow
-
-**Example: Telegram to BrainBox**
-
-```
-[Telegram Trigger] --> [HTTP Request] --> [Telegram (Send Reply)]
-```
-
-**Telegram Trigger Node:**
-- Set up your Telegram bot via BotFather
-- Configure the trigger to receive messages
-
-**HTTP Request Node:**
-- **Method:** `POST`
-- **URL:** `https://your-app.vercel.app/api/ideas`
-- **Authentication:** Select your BrainBox API credential
-- **Body Content Type:** `JSON`
-- **Body:**
-```json
-{
-  "content": "{{ $json.message.text }}"
-}
-```
-
-**Telegram Reply Node (Optional):**
-- Send a confirmation message back to the user
-
-### Example n8n Workflow JSON
-
-```json
-{
-  "nodes": [
-    {
-      "name": "Telegram Trigger",
-      "type": "n8n-nodes-base.telegramTrigger",
-      "parameters": {
-        "updates": ["message"]
-      }
-    },
-    {
-      "name": "Save to BrainBox",
-      "type": "n8n-nodes-base.httpRequest",
-      "parameters": {
-        "method": "POST",
-        "url": "https://your-app.vercel.app/api/ideas",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "content",
-              "value": "={{ $json.message.text }}"
-            }
-          ]
-        }
-      }
-    },
-    {
-      "name": "Send Confirmation",
-      "type": "n8n-nodes-base.telegram",
-      "parameters": {
-        "operation": "sendMessage",
-        "chatId": "={{ $json.message.chat.id }}",
-        "text": "Idea saved!"
-      }
-    }
-  ]
-}
-```
-
----
-
-## Connecting with Other Tools
-
-BrainBox works with any tool that can make HTTP requests.
+- Create a named key
+- Copy it once (full value is only shown on creation)
+- Rename or delete keys anytime
 
 ### cURL Example
 
 ```bash
-curl -X POST "https://your-app.vercel.app/api/ideas" \
+curl -X POST "http://localhost:3000/api/ideas" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -d '{"content": "Idea from terminal"}'
+  -H "Authorization: Bearer bb_your_api_key_here" \
+  -d '{"content":"Idea from terminal"}'
 ```
-
-### iOS Shortcuts
-
-Create a shortcut that:
-1. Asks for input text
-2. Makes HTTP request to BrainBox API
-3. Shows confirmation
-
-### Zapier / Make
-
-Use the **Webhooks** action to POST to the BrainBox API with your Bearer token.
-
-### Alfred / Raycast
-
-Create a workflow that captures selected text or clipboard and sends to BrainBox.
 
 ---
 
@@ -238,6 +130,7 @@ Create a workflow that captures selected text or clipboard and sends to BrainBox
 ```sql
 CREATE TABLE ideas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
   source TEXT DEFAULT 'web',
   status TEXT DEFAULT 'inbox',

@@ -88,7 +88,7 @@ export function QuickCapture({ onCapture, isOpen, onOpenChange, onClose }: Quick
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Kbd>Esc</Kbd> cancel
             <span className="mx-1">/</span>
-            <Kbd>Cmd+Enter</Kbd> save
+            <Kbd>Cmd/Ctrl+Enter</Kbd> save
           </p>
           <div className="flex gap-2">
             <Button

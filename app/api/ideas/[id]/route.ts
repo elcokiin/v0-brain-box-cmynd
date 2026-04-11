@@ -3,25 +3,13 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { NextRequest, NextResponse } from "next/server"
 
-// Validate API key for external integrations
-async function validateApiKey(request: NextRequest): Promise<string | null> {
-  const authHeader = request.headers.get("authorization")
-  if (!authHeader?.startsWith("Bearer ")) return null
-  
-  const apiKey = authHeader.slice(7)
-  if (apiKey !== process.env.BRAINBOX_API_KEY) return null
-  
-  const users = await sql`SELECT id FROM users LIMIT 1`
-  return users.length > 0 ? users[0].id : null
-}
-
-// Get authenticated user ID from session or API key
-async function getAuthenticatedUserId(request: NextRequest): Promise<string | null> {
+// Get authenticated user ID from session
+async function getAuthenticatedUserId(): Promise<string | null> {
   const session = await getServerSession(authOptions)
   if (session?.user?.id) {
     return session.user.id
   }
-  return validateApiKey(request)
+  return null
 }
 
 // GET - Fetch single idea
@@ -30,7 +18,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = await getAuthenticatedUserId(request)
+    const userId = await getAuthenticatedUserId()
     
     if (!userId) {
       return NextResponse.json(
@@ -68,7 +56,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = await getAuthenticatedUserId(request)
+    const userId = await getAuthenticatedUserId()
     
     if (!userId) {
       return NextResponse.json(
@@ -138,7 +126,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = await getAuthenticatedUserId(request)
+    const userId = await getAuthenticatedUserId()
     
     if (!userId) {
       return NextResponse.json(

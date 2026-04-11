@@ -148,3 +148,27 @@
     @apply bg-background text-foreground;
   }
 }
+
+.themed-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--muted);
+}
+
+.themed-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.themed-scrollbar::-webkit-scrollbar-track {
+  background: var(--muted);
+  border-radius: 999px;
+}
+
+.themed-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+  border: 2px solid var(--muted);
+}
+
+.themed-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}

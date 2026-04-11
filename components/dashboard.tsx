@@ -6,6 +6,7 @@ import { IdeasList } from "@/components/ideas-list"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { Inbox, Archive, Trash2 } from "lucide-react"
 import { UserMenu } from "@/components/user-menu"
+import { useTheme } from "@/components/theme-provider"
 
 type TabValue = "inbox" | "archived" | "deleted"
 
@@ -20,6 +21,46 @@ interface DashboardProps {
 export function Dashboard({ user }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<TabValue>("inbox")
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [keyboardEnabled, setKeyboardEnabled] = useState(true)
+  const [themeToggleKeyEnabled, setThemeToggleKeyEnabled] = useState(true)
+  const [settingsKeyEnabled, setSettingsKeyEnabled] = useState(true)
+  const { resolvedTheme, setTheme } = useTheme()
+
+  useEffect(() => {
+    const stored = localStorage.getItem("brainbox-keyboard-nav")
+    if (stored !== null) setKeyboardEnabled(stored === "true")
+
+    const storedThemeKey = localStorage.getItem("brainbox-shortcut-theme-toggle")
+    if (storedThemeKey !== null) setThemeToggleKeyEnabled(storedThemeKey === "true")
+
+    const storedSettingsKey = localStorage.getItem("brainbox-shortcut-settings")
+    if (storedSettingsKey !== null) setSettingsKeyEnabled(storedSettingsKey === "true")
+
+    const handleToggle = (e: Event) => {
+      const custom = e as CustomEvent<boolean>
+      setKeyboardEnabled(custom.detail)
+    }
+
+    const handleThemeKeyToggle = (e: Event) => {
+      const custom = e as CustomEvent<boolean>
+      setThemeToggleKeyEnabled(custom.detail)
+    }
+
+    const handleSettingsKeyToggle = (e: Event) => {
+      const custom = e as CustomEvent<boolean>
+      setSettingsKeyEnabled(custom.detail)
+    }
+
+    window.addEventListener("brainbox-keyboard-nav", handleToggle)
+    window.addEventListener("brainbox-shortcut-theme-toggle", handleThemeKeyToggle)
+    window.addEventListener("brainbox-shortcut-settings", handleSettingsKeyToggle)
+
+    return () => {
+      window.removeEventListener("brainbox-keyboard-nav", handleToggle)
+      window.removeEventListener("brainbox-shortcut-theme-toggle", handleThemeKeyToggle)
+      window.removeEventListener("brainbox-shortcut-settings", handleSettingsKeyToggle)
+    }
+  }, [])
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     // Ignore when typing in inputs
@@ -29,6 +70,10 @@ export function Dashboard({ user }: DashboardProps) {
       target.tagName === "TEXTAREA" ||
       target.isContentEditable
     ) {
+      return
+    }
+
+    if (!keyboardEnabled) {
       return
     }
 
@@ -51,12 +96,19 @@ export function Dashboard({ user }: DashboardProps) {
       return
     }
 
-    // 'e' for settings
-    if (e.key.toLowerCase() === "e") {
+    // 'p' or ',' toggles settings
+    if (settingsKeyEnabled && (e.key.toLowerCase() === "p" || e.key === ",")) {
       e.preventDefault()
-      setSettingsOpen(true)
+      setSettingsOpen((prev) => !prev)
+      return
     }
-  }, [])
+
+    // 'd' toggles light/dark theme
+    if (themeToggleKeyEnabled && e.key.toLowerCase() === "d") {
+      e.preventDefault()
+      setTheme(resolvedTheme === "dark" ? "light" : "dark")
+    }
+  }, [keyboardEnabled, resolvedTheme, setTheme, settingsKeyEnabled, themeToggleKeyEnabled])
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown)

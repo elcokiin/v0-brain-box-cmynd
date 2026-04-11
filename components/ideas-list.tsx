@@ -4,12 +4,27 @@ import { useState, useEffect, useCallback } from "react"
 import useSWR from "swr"
 import { IdeaCard, type Idea } from "@/components/idea-card"
 import { QuickCapture } from "@/components/quick-capture"
-import { Empty } from "@/components/ui/empty"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useKeyboardNavigation } from "@/hooks/use-keyboard-navigation"
 import { Inbox, Archive, Trash2, Pin } from "lucide-react"
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+const fetcher = async (url: string) => {
+  const res = await fetch(url)
+
+  if (!res.ok) {
+    throw new Error(`Request failed: ${res.status}`)
+  }
+
+  return res.json()
+}
 
 interface IdeasListProps {
   status: "inbox" | "archived" | "deleted"
@@ -19,6 +34,7 @@ interface IdeasListProps {
 export function IdeasList({ status, onOpenCapture }: IdeasListProps) {
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [keyboardEnabled, setKeyboardEnabled] = useState(true)
+  const [newIdeaKeyEnabled, setNewIdeaKeyEnabled] = useState(true)
   const [captureOpen, setCaptureOpen] = useState(false)
 
   const { data, error, isLoading, mutate } = useSWR<{ ideas: Idea[] }>(
@@ -35,12 +51,24 @@ export function IdeasList({ status, onOpenCapture }: IdeasListProps) {
     const stored = localStorage.getItem("brainbox-keyboard-nav")
     if (stored !== null) setKeyboardEnabled(stored === "true")
 
+    const storedNewIdeaKey = localStorage.getItem("brainbox-shortcut-new-idea")
+    if (storedNewIdeaKey !== null) setNewIdeaKeyEnabled(storedNewIdeaKey === "true")
+
     const handleToggle = (e: Event) => {
       const custom = e as CustomEvent
       setKeyboardEnabled(custom.detail)
     }
+    const handleNewIdeaToggle = (e: Event) => {
+      const custom = e as CustomEvent
+      setNewIdeaKeyEnabled(custom.detail)
+    }
+
     window.addEventListener("brainbox-keyboard-nav", handleToggle)
-    return () => window.removeEventListener("brainbox-keyboard-nav", handleToggle)
+    window.addEventListener("brainbox-shortcut-new-idea", handleNewIdeaToggle)
+    return () => {
+      window.removeEventListener("brainbox-keyboard-nav", handleToggle)
+      window.removeEventListener("brainbox-shortcut-new-idea", handleNewIdeaToggle)
+    }
   }, [])
 
   const handleNew = useCallback(() => {
@@ -54,7 +82,7 @@ export function IdeasList({ status, onOpenCapture }: IdeasListProps) {
     itemCount: ideas.length,
     selectedIndex,
     onSelect: setSelectedIndex,
-    onNew: handleNew,
+    onNew: newIdeaKeyEnabled ? handleNew : undefined,
     enabled: keyboardEnabled && !captureOpen,
   })
 
@@ -177,6 +205,19 @@ export function IdeasList({ status, onOpenCapture }: IdeasListProps) {
     },
   }
 
+  const renderEmpty = (title: string, description: string, Icon: typeof Inbox) => (
+    <Empty>
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <Icon className="size-5" />
+        </EmptyMedia>
+        <EmptyTitle>{title}</EmptyTitle>
+        <EmptyDescription>{description}</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent />
+    </Empty>
+  )
+
   if (isLoading) {
     return (
       <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-3 space-y-3">
@@ -188,12 +229,10 @@ export function IdeasList({ status, onOpenCapture }: IdeasListProps) {
   }
 
   if (error) {
-    return (
-      <Empty
-        icon={emptyState[status].icon}
-        title="Failed to load ideas"
-        description="There was an error loading your ideas. Please try again."
-      />
+    return renderEmpty(
+      "Failed to load ideas",
+      "There was an error loading your ideas. Please try again.",
+      emptyState[status].icon
     )
   }
 
@@ -228,11 +267,11 @@ export function IdeasList({ status, onOpenCapture }: IdeasListProps) {
       )}
 
       {ideas.length === 0 ? (
-        <Empty
-          icon={EmptyIcon}
-          title={emptyState[status].title}
-          description={emptyState[status].description}
-        />
+        renderEmpty(
+          emptyState[status].title,
+          emptyState[status].description,
+          EmptyIcon
+        )
       ) : (
         <div className="space-y-6">
           {pinnedIdeas.length > 0 && (

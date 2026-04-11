@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils"
 export interface Idea {
   id: string
   content: string
-  source: "web" | "telegram"
+  source: "web" | "telegram" | "api"
   status: "inbox" | "archived" | "deleted"
   tags: string[] | null
   pinned: boolean
@@ -53,7 +53,6 @@ interface IdeaCardProps {
   onColorChange: (id: string, color: string | null) => void
   onPermanentDelete?: (id: string) => void
   isSelected?: boolean
-  onOpenMenu?: () => void
   showTrashInfo?: boolean
 }
 
@@ -64,7 +63,6 @@ export function IdeaCard({
   onColorChange,
   onPermanentDelete,
   isSelected = false,
-  onOpenMenu,
   showTrashInfo = false
 }: IdeaCardProps) {
   const [isUpdating, setIsUpdating] = useState(false)
@@ -123,16 +121,17 @@ export function IdeaCard({
   }, [isSelected])
 
   useEffect(() => {
-    if (isSelected && onOpenMenu) {
-      const handleEnter = (e: KeyboardEvent) => {
-        if (e.key === "Enter" && isSelected) {
-          setMenuOpen(true)
-        }
+    if (!isSelected) return
+
+    const handleEnter = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && isSelected) {
+        setMenuOpen(true)
       }
-      window.addEventListener("keydown", handleEnter)
-      return () => window.removeEventListener("keydown", handleEnter)
     }
-  }, [isSelected, onOpenMenu])
+
+    window.addEventListener("keydown", handleEnter)
+    return () => window.removeEventListener("keydown", handleEnter)
+  }, [isSelected])
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -168,131 +167,130 @@ export function IdeaCard({
         size="icon-sm"
         onClick={handlePinToggle}
         className={cn(
-          "absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity",
-          idea.pinned && "opacity-100 text-primary"
+          "absolute top-2 right-2 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity",
+          idea.pinned && "text-primary sm:opacity-100"
         )}
       >
         {idea.pinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
         <span className="sr-only">{idea.pinned ? "Unpin" : "Pin"}</span>
       </Button>
 
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className={cn(
+              "absolute top-2 right-10 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity",
+              isSelected && "sm:opacity-100"
+            )}
+          >
+            <MoreHorizontal className="size-4" />
+            <span className="sr-only">Actions</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={handlePinToggle}>
+            {idea.pinned ? (
+              <>
+                <PinOff className="size-4 mr-2" />
+                Unpin
+              </>
+            ) : (
+              <>
+                <Pin className="size-4 mr-2" />
+                Pin to top
+              </>
+            )}
+          </DropdownMenuItem>
+
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <Palette className="size-4 mr-2" />
+              Background color
+            </DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent className="p-2">
+                <div className="grid grid-cols-6 gap-1.5">
+                  {CARD_COLORS.map((colorOption) => (
+                    <button
+                      key={colorOption.id ?? "default"}
+                      onClick={() => handleColorSelect(colorOption.id)}
+                      className={cn(
+                        "size-6 rounded-full border-2 transition-all hover:scale-110 flex items-center justify-center",
+                        colorOption.id === null
+                          ? "bg-card border-border"
+                          : "border-transparent",
+                        idea.background_color === colorOption.id && "ring-2 ring-primary ring-offset-1"
+                      )}
+                      style={colorOption.color ? { backgroundColor: colorOption.color } : undefined}
+                      title={colorOption.name}
+                    >
+                      {idea.background_color === colorOption.id && (
+                        <Check className="size-3 text-foreground/70" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+
+          <DropdownMenuSeparator />
+
+          {idea.status !== "inbox" && (
+            <DropdownMenuItem onClick={() => handleStatusChange("inbox")}>
+              <Inbox className="size-4 mr-2" />
+              Move to Inbox
+            </DropdownMenuItem>
+          )}
+          {idea.status !== "archived" && (
+            <DropdownMenuItem onClick={() => handleStatusChange("archived")}>
+              <Archive className="size-4 mr-2" />
+              Archive
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          {showTrashInfo && onPermanentDelete ? (
+            <DropdownMenuItem
+              onClick={handlePermanentDelete}
+              className="text-destructive focus:text-destructive"
+            >
+              <AlertTriangle className="size-4 mr-2" />
+              Delete permanently
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              onClick={() => handleStatusChange("deleted")}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="size-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       <CardContent className="pt-2 pr-10">
         <div className="space-y-3">
           <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
             {idea.content}
           </p>
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {idea.source === "telegram" ? (
-                <MessageSquare className="size-3" />
-              ) : (
-                <Globe className="size-3" />
-              )}
-              {showTrashInfo && idea.deleted_at ? (
-                <span className="text-destructive/70 flex items-center gap-1">
-                  <Trash2 className="size-3" />
-                  {formatTimeInTrash(idea.deleted_at)}
-                </span>
-              ) : (
-                <span>{formatDate(idea.created_at)}</span>
-              )}
-              {idea.pinned && <Pin className="size-3 text-primary" />}
-            </div>
-            <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  className={cn(
-                    "opacity-0 group-hover:opacity-100 transition-opacity",
-                    isSelected && "opacity-100"
-                  )}
-                >
-                  <MoreHorizontal className="size-4" />
-                  <span className="sr-only">Actions</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={handlePinToggle}>
-                  {idea.pinned ? (
-                    <>
-                      <PinOff className="size-4 mr-2" />
-                      Unpin
-                    </>
-                  ) : (
-                    <>
-                      <Pin className="size-4 mr-2" />
-                      Pin to top
-                    </>
-                  )}
-                </DropdownMenuItem>
-
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <Palette className="size-4 mr-2" />
-                    Background color
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent className="p-2">
-                      <div className="grid grid-cols-6 gap-1.5">
-                        {CARD_COLORS.map((colorOption) => (
-                          <button
-                            key={colorOption.id ?? "default"}
-                            onClick={() => handleColorSelect(colorOption.id)}
-                            className={cn(
-                              "size-6 rounded-full border-2 transition-all hover:scale-110 flex items-center justify-center",
-                              colorOption.id === null
-                                ? "bg-card border-border"
-                                : "border-transparent",
-                              idea.background_color === colorOption.id && "ring-2 ring-primary ring-offset-1"
-                            )}
-                            style={colorOption.color ? { backgroundColor: colorOption.color } : undefined}
-                            title={colorOption.name}
-                          >
-                            {idea.background_color === colorOption.id && (
-                              <Check className="size-3 text-foreground/70" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-
-                <DropdownMenuSeparator />
-
-                {idea.status !== "inbox" && (
-                  <DropdownMenuItem onClick={() => handleStatusChange("inbox")}>
-                    <Inbox className="size-4 mr-2" />
-                    Move to Inbox
-                  </DropdownMenuItem>
-                )}
-                {idea.status !== "archived" && (
-                  <DropdownMenuItem onClick={() => handleStatusChange("archived")}>
-                    <Archive className="size-4 mr-2" />
-                    Archive
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                {showTrashInfo && onPermanentDelete ? (
-                  <DropdownMenuItem
-                    onClick={handlePermanentDelete}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <AlertTriangle className="size-4 mr-2" />
-                    Delete permanently
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    onClick={() => handleStatusChange("deleted")}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="size-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {idea.source === "telegram" ? (
+              <MessageSquare className="size-3" />
+            ) : (
+              <Globe className="size-3" />
+            )}
+            {showTrashInfo && idea.deleted_at ? (
+              <span className="text-destructive/70 flex items-center gap-1">
+                <Trash2 className="size-3" />
+                {formatTimeInTrash(idea.deleted_at)}
+              </span>
+            ) : (
+              <span>{formatDate(idea.created_at)}</span>
+            )}
+            {idea.pinned && <Pin className="size-3 text-primary" />}
           </div>
           {idea.tags && idea.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">
